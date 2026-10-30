@@ -1,0 +1,11 @@
+id,quadro,quadro_id,tempo_s,carimbo,sentido,categoria,categoria_inicial,x,y
+1,8,8,0.32,2026-10-30 07:15:00.320,afastando,carro,carro,2931.0,1387.1
+2,14,14,0.56,2026-10-30 07:15:00.560,aproximando,caminhao,caminhao,1026.6,1414.3
+3,17,17,0.68,2026-10-30 07:15:00.680,aproximando,carro,carro,1504.2,1412.2
+4,27,27,1.08,2026-10-30 07:15:01.080,aproximando,carro,carro,1535.6,1429.2
+10,70,70,2.8,2026-10-30 07:15:02.800,afastando,carro,carro,2899.4,1388.1
+5,219,219,8.76,2026-10-30 07:15:08.760,aproximando,carro,carro,1166.5,1417.5
+7,356,356,14.24,2026-10-30 07:15:14.240,aproximando,carro,carro,1063.9,1415.4
+34,411,411,16.44,2026-10-30 07:15:16.440,afastando,carro,carro,2994.5,1395.2
+17,426,426,17.04,2026-10-30 07:15:17.040,aproximando,caminhao,caminhao,1062.1,1418.3
+27,492,492,19.68,2026-10-30 07:15:19.680,aproximando,carro,carro,1200.6,1416.6

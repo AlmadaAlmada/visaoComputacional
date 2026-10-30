@@ -1,0 +1,99 @@
+video:
+  inicio: '2026-10-30 07:00:00'
+  fps: null
+modelo:
+  pesos: yolo11s.pt
+  conf: 0.1
+  conf_operacao: 0.3
+  iou_nms: 0.6
+  agnostic_nms: false
+  imgsz: 960
+  dispositivo: null
+  rastreador: rastreador.yaml
+  classificador:
+    pesos: treinos/mio_tcd_cls/weights/best.pt
+    min_px: 24
+    imgsz: 128
+    conf_min: 0.6
+    compativeis:
+      carro:
+      - carro
+      - van
+      caminhao:
+      - caminhao
+      - van
+      - onibus
+      onibus:
+      - onibus
+      - caminhao
+      moto:
+      - moto
+      - bicicleta
+      bicicleta:
+      - bicicleta
+      - moto
+categorias:
+  mapa:
+    car: carro
+    motorcycle: moto
+    motorbike: moto
+    bus: onibus
+    truck: caminhao
+    big-truck: caminhao
+    bicycle: bicicleta
+    van: van
+    articulated_truck: caminhao
+    single_unit_truck: caminhao
+    pickup_truck: carro
+    work_van: van
+    motorized_vehicle: outro
+    non-motorized_vehicle: outro
+  pesadas:
+  - caminhao
+  - onibus
+  ucp:
+    carro: 1.0
+    moto: 0.33
+    onibus: 2.0
+    caminhao: 2.5
+    van: 1.5
+    bicicleta: 0.2
+    outro: 1.0
+linha:
+  p1:
+  - 0.0591
+  - 0.6514
+  p2:
+  - 0.9654
+  - 0.6639
+  normalizada: true
+  margem_px: 8
+  tolerancia_extremos: 0.02
+  sentidos:
+  - aproximando
+  - afastando
+contador:
+  min_observacoes: 2
+  ponto_referencia: base
+  dedup_iou: 0.3
+  dedup_janela_s: 1.0
+  retencao_s: 10.0
+  janela_velocidade_s: 1.0
+  limiar_parado: 0.15
+  distancia_fila_px: 200
+relatorio:
+  faixa_min: 60
+alerta:
+  janela_s: 30
+  min_janelas_base: 3
+  limiar_z: 2.5
+  fator_alto: 1.5
+  fator_baixo: 0.4
+  janelas_sem_fluxo: 2
+  linha_base_veic_h: null
+  alfa: 0.3
+  parado_s: 20
+  parados_min: 3
+  intervalo_congestionamento_s: 60
+  frac_pesados: 0.35
+  min_veiculos_pesados: 8

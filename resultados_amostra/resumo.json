@@ -1,0 +1,44 @@
+{
+  "fonte": "amostras/rodovia.mp4",
+  "inicio": "2026-10-30 07:15:00",
+  "duracao_s": 21.52,
+  "total_veiculos": 10,
+  "taxa_veic_h": 1672.9,
+  "por_sentido": {
+    "aproximando": 7,
+    "afastando": 3
+  },
+  "por_categoria": {
+    "carro": 8,
+    "caminhao": 2
+  },
+  "por_sentido_categoria": {
+    "afastando|carro": 3,
+    "aproximando|caminhao": 2,
+    "aproximando|carro": 5
+  },
+  "duplicatas_suprimidas": 0,
+  "categoria_corrigida_por_votacao": 0,
+  "alertas": {},
+  "recomendacoes": [
+    "Volume observado: 10 veículos em 0.4 min (taxa equivalente de 1673 veíc/h).",
+    "Fluxo equivalente: aproximando 77% (1673 UCP/h) x afastando 23% (502 UCP/h). Sugestão: repartir o tempo de verde útil na proporção 77/23 entre as aproximações.",
+    "Fluxo desbalanceado no sentido aproximando: avaliar onda verde nesse sentido e, se o padrão se repetir em outros dias, faixa reversível no horário.",
+    "Veículos pesados são 20% do tráfego: considerar janela de carga e descarga fora do pico, fiscalização de peso e manutenção preventiva do pavimento.",
+    "Nenhum fluxo anormal detectado: manter a programação semafórica atual e seguir monitorando."
+  ],
+  "quadros": 538,
+  "fps_video": 25.0,
+  "fps_processamento": 11.49,
+  "modelo": "yolo11s.pt",
+  "linha_px": [
+    [
+      192,
+      1404
+    ],
+    [
+      3648,
+      1404
+    ]
+  ]
+}
