@@ -1,3 +1,5 @@
+import time
+
 from ultralytics import YOLO
 
 from .contador import Deteccao
@@ -59,6 +61,7 @@ class DetectorRastreador:
         self.parametros_rastreio = dict(comum, persist=True, tracker=m["rastreador"], conf=m["conf"])
         self.parametros_deteccao = comum
         self.conf_operacao = m.get("conf_operacao", 0.3)
+        self.tempos = {}
         self.classificador = None
         c = m.get("classificador") or {}
         if c.get("pesos"):
@@ -66,7 +69,7 @@ class DetectorRastreador:
                                                         c.get("conf_min", 0.5), m.get("dispositivo"),
                                                         c.get("compativeis"))
 
-    def processar(self, quadro):
+    def _rastrear(self, quadro):
         r = self.modelo.track(quadro, **self.parametros_rastreio)[0]
         caixas = r.boxes
         if caixas is None or caixas.id is None:
@@ -75,13 +78,23 @@ class DetectorRastreador:
         ids = caixas.id.int().cpu().tolist()
         classes = caixas.cls.int().cpu().tolist()
         confs = caixas.conf.cpu().tolist()
-        deteccoes = [Deteccao(i, tuple(c), self.categorias[k], s)
-                     for i, c, k, s in zip(ids, xyxy, classes, confs) if k in self.categorias]
-        if self.classificador is None or not deteccoes:
-            return deteccoes
+        return [Deteccao(i, tuple(c), self.categorias[k], s)
+                for i, c, k, s in zip(ids, xyxy, classes, confs) if k in self.categorias]
+
+    def _refinar(self, quadro, deteccoes):
         refinadas = self.classificador.classificar(quadro, [d.caixa for d in deteccoes],
                                                    [d.categoria for d in deteccoes])
         return [d if ref is None else d._replace(categoria=ref[0], conf=ref[1]) for d, ref in zip(deteccoes, refinadas)]
+
+    def processar(self, quadro):
+        inicio = time.perf_counter()
+        deteccoes = self._rastrear(quadro)
+        meio = time.perf_counter()
+        if self.classificador is not None and deteccoes:
+            deteccoes = self._refinar(quadro, deteccoes)
+        fim = time.perf_counter()
+        self.tempos = {"deteccao_rastreio": (meio - inicio) * 1000.0, "classificacao": (fim - meio) * 1000.0}
+        return deteccoes
 
     def detectar(self, quadro, conf=0.05):
         r = self.modelo.predict(quadro, conf=conf, **self.parametros_deteccao)[0]

@@ -61,11 +61,11 @@ categorias:
     outro: 1.0
 linha:
   p1:
-  - 0.0591
-  - 0.6514
+  - 0.0023
+  - 0.6569
   p2:
-  - 0.9654
-  - 0.6639
+  - 0.9859
+  - 0.6829
   normalizada: true
   margem_px: 8
   tolerancia_extremos: 0.02

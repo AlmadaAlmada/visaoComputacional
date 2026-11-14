@@ -1,27 +1,21 @@
-# Ambiente
 .venv/
 __pycache__/
 *.pyc
 
-# Datasets (vários GB)
 *.tar
 dados/
 
-# Pesos pré-treinados (baixados automaticamente)
 yolo*.pt
 weights/
 
-# Treinos: mantém só o melhor peso do classificador (10 MB), usado no README
 treinos/**
 !treinos/
 !treinos/mio_tcd_cls/
 !treinos/mio_tcd_cls/weights/
 !treinos/mio_tcd_cls/weights/best.pt
 
-# Saídas geradas
+amostras/
 resultados*/
-!resultados_amostra/
-resultados_amostra/video_anotado.mp4
 avaliacao*/
 aval_*/
 runs/

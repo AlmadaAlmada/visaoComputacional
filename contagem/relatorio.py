@@ -147,7 +147,7 @@ def tabela_md(df):
     return "\n".join([cabecalho, separador] + linhas)
 
 
-def gerar(pasta, contador, monitor, cfg, inicio, duracao_s, descricao_fonte, extras=None):
+def gerar(pasta, contador, monitor, cfg, inicio, duracao_s, descricao_fonte, extras=None, latencia=None):
     os.makedirs(pasta, exist_ok=True)
     sentidos = list(cfg["linha"]["sentidos"])
     ucp = cfg["categorias"]["ucp"]
@@ -162,6 +162,9 @@ def gerar(pasta, contador, monitor, cfg, inicio, duracao_s, descricao_fonte, ext
                                    "mensagem", "recomendacao"]
                  ).to_csv(os.path.join(pasta, "alertas.csv"), index=False, encoding="utf-8")
     pd.DataFrame(monitor.janelas).to_csv(os.path.join(pasta, "janelas_fluxo.csv"), index=False, encoding="utf-8")
+
+    if latencia is not None:
+        latencia.to_csv(os.path.join(pasta, "latencia.csv"), index=False, encoding="utf-8")
 
     faixas = tabela_faixas(df, inicio, duracao_s, cfg["relatorio"]["faixa_min"], sentidos, ucp)
     faixas.to_csv(os.path.join(pasta, "contagem_por_faixa.csv"), index=False, encoding="utf-8")
@@ -210,6 +213,14 @@ def gerar(pasta, contador, monitor, cfg, inicio, duracao_s, descricao_fonte, ext
                tabela_md(cruzada.reset_index() if not cruzada.empty else cruzada),
                "", f"## Contagem por faixa horária ({cfg['relatorio']['faixa_min']} min)", "", tabela_md(faixas),
                "", "## Alertas de fluxo anormal", "", tabela_md(tabela_alertas), ""]
+    lat = resumo.get("latencia")
+    if latencia is not None and lat:
+        partes += ["## Latência por quadro", "",
+                   f"- Dispositivo: {resumo.get('dispositivo')}  |  orçamento por quadro: {lat['orcamento_ms']} ms",
+                   f"- Processamento (detecção + classificação + contagem e decisão): média "
+                   f"{lat['processamento_media_ms']} ms, p95 {lat['processamento_p95_ms']} ms",
+                   f"- Tempo real: **{'sim' if lat['tempo_real'] else 'não'}** "
+                   f"({lat['fps_sustentavel']} quadros/s sustentáveis)", "", tabela_md(latencia), ""]
     if figuras:
         partes += ["## Gráficos", ""] + [f"![{os.path.basename(f)}]({os.path.basename(f)})" for f in figuras]
     with open(os.path.join(pasta, "relatorio.md"), "w", encoding="utf-8") as f:

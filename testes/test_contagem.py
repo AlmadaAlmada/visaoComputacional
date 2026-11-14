@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from contagem.alertas import MonitorFluxo
 from contagem.avaliacao import avaliar_contagem, avaliar_deteccoes
 from contagem.contador import Contador, Deteccao, LinhaContagem
+from contagem.latencia import MedidorLatencia
 
 FPS = 10.0
 
@@ -149,6 +150,22 @@ class TestAvaliacao(unittest.TestCase):
         carro = tabela[tabela["categoria"] == "carro"].iloc[0]
         self.assertEqual((carro["tp"], carro["ap50"]), (1, 1.0))
         self.assertEqual(map50, 0.5)
+
+
+class TestLatencia(unittest.TestCase):
+    def test_descarta_aquecimento_e_compara_com_orcamento(self):
+        m = MedidorLatencia(aquecimento=2)
+        m.registrar({"deteccao_rastreio": 900.0, "classificacao": 0.0, "contagem_decisao": 0.0})
+        m.registrar({"deteccao_rastreio": 900.0, "classificacao": 0.0, "contagem_decisao": 0.0})
+        for _ in range(20):
+            m.registrar({"leitura": 5.0, "deteccao_rastreio": 25.0, "classificacao": 8.0, "contagem_decisao": 1.0,
+                         "visualizacao": 10.0})
+        r = m.resumo(fps_video=25.0)
+        self.assertEqual(r["quadros_medidos"], 20)
+        self.assertEqual(r["processamento_media_ms"], 34.0)
+        self.assertEqual(r["total_media_ms"], 49.0)
+        self.assertTrue(r["tempo_real"])
+        self.assertFalse(m.resumo(fps_video=30.0)["tempo_real"])
 
 
 if __name__ == "__main__":
