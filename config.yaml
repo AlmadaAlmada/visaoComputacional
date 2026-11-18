@@ -11,7 +11,7 @@ modelo:
   dispositivo: null
   rastreador: rastreador.yaml
   classificador:
-    pesos: treinos/mio_tcd_cls/weights/best.pt
+    pesos: treinos/cls_com_proprias_s0/weights/best.pt
     min_px: 24
     imgsz: 128
     conf_min: 0.6

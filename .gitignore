@@ -4,6 +4,8 @@ __pycache__/
 
 *.tar
 dados/
+fotos_nossas_originais/
+especificacao.pdf
 
 yolo*.pt
 weights/
@@ -13,9 +15,18 @@ treinos/**
 !treinos/mio_tcd_cls/
 !treinos/mio_tcd_cls/weights/
 !treinos/mio_tcd_cls/weights/best.pt
+!treinos/cls_com_proprias_s0/
+!treinos/cls_com_proprias_s0/weights/
+!treinos/cls_com_proprias_s0/weights/best.pt
 
 amostras/
 resultados*/
 avaliacao*/
 aval_*/
 runs/
+
+artigo/*.aux
+artigo/*.bbl
+artigo/*.blg
+artigo/*.log
+artigo/*.out

@@ -119,8 +119,117 @@ def cmd_detector(a):
     print(texto)
 
 
+NOMES = {"car": "carro", "pickup_truck": "picape", "work_van": "van", "single_unit_truck": "caminhão",
+         "articulated_truck": "carreta", "bus": "ônibus", "motorcycle": "moto", "bicycle": "bicicleta",
+         "pedestrian": "pedestre", "background": "fundo", "non-motorized_vehicle": "não motorizado",
+         "motorized_vehicle": "motorizado"}
+
+
+def _pares(valores):
+    return dict(v.split("=", 1) for v in valores)
+
+
+def _prever(pesos, arquivos, imgsz, lote=256):
+    from ultralytics import YOLO
+    modelo = YOLO(pesos)
+    saida = []
+    for i in range(0, len(arquivos), lote):
+        for r in modelo.predict(arquivos[i:i + lote], imgsz=imgsz, verbose=False):
+            saida.append(r.names[int(r.probs.top1)])
+    return saida
+
+
+def _figura_exemplos(df, modelos, caminho):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from PIL import Image
+
+    colunas = 6
+    linhas = -(-len(df) // colunas)
+    fig, eixos = plt.subplots(linhas, colunas, figsize=(colunas * 2.0, linhas * 2.15))
+    for ax in eixos.flat:
+        ax.axis("off")
+    for ax, (_, r) in zip(eixos.flat, df.iterrows()):
+        img = Image.open(r["arquivo"])
+        img.thumbnail((256, 256))
+        ax.imshow(img)
+        ax.set_title(NOMES.get(r["referencia"], r["referencia"]), fontsize=9, fontweight="bold")
+        texto = []
+        for m in modelos:
+            certo = r[m] == r["referencia"]
+            texto.append((f"{m}: {NOMES.get(r[m], r[m])}", "#1a7f37" if certo else "#c62828"))
+        for k, (t, cor) in enumerate(texto):
+            ax.annotate(t, (0.5, 0), xycoords="axes fraction", xytext=(0, -4 - 11 * k), textcoords="offset points",
+                        ha="center", va="top", fontsize=8, color=cor)
+    plt.tight_layout(h_pad=2.2)
+    plt.savefig(caminho, dpi=150)
+    plt.close()
+
+
+def cmd_classificador(a):
+    import glob
+    import numpy as np
+    from contagem.avaliacao import avaliar_classificacao
+
+    cfg = carregar_config(a.config)
+    mapa = cfg["categorias"]["mapa"]
+    modelos = {nome: caminhos.split(",") for nome, caminhos in _pares(a.modelos).items()}
+    conjuntos = _pares(a.conjuntos)
+    os.makedirs(a.saida, exist_ok=True)
+    linhas, previsoes, por_classe = [], {}, []
+    for nome_conj, pasta in conjuntos.items():
+        arquivos = sorted(glob.glob(os.path.join(pasta, "*", "*.jpg")))
+        referencia = [os.path.basename(os.path.dirname(f)) for f in arquivos]
+        tabela = pd.DataFrame({"arquivo": arquivos, "referencia": referencia})
+        for nome_mod, pesos in modelos.items():
+            for semente, caminho in enumerate(pesos):
+                previsto = _prever(caminho, arquivos, a.imgsz)
+                r = avaliar_classificacao(referencia, previsto)
+                cat = np.mean([mapa.get(x, x) == mapa.get(y, y) for x, y in zip(referencia, previsto)])
+                linhas.append({"conjunto": nome_conj, "modelo": nome_mod, "semente": semente, "amostras": len(arquivos),
+                               "acuracia": r["acuracia"], "f1_macro": r["f1_macro"],
+                               "acuracia_categoria": round(float(cat), 4)})
+                por_classe.append(r["por_classe"].assign(conjunto=nome_conj, modelo=nome_mod, semente=semente))
+                tabela[f"{nome_mod}_s{semente}"] = previsto
+                if semente == 0:
+                    tabela[nome_mod] = previsto
+                    r["confusao"].to_csv(os.path.join(a.saida, f"confusao_{nome_conj}_{nome_mod}.csv"), encoding="utf-8")
+        previsoes[nome_conj] = tabela
+        tabela.to_csv(os.path.join(a.saida, f"previsoes_{nome_conj}.csv"), index=False, encoding="utf-8")
+
+    execucoes = pd.DataFrame(linhas)
+    execucoes.to_csv(os.path.join(a.saida, "execucoes.csv"), index=False, encoding="utf-8")
+    resumo = execucoes.groupby(["conjunto", "modelo"], sort=False).agg(
+        amostras=("amostras", "first"),
+        acuracia_media=("acuracia", "mean"), acuracia_dp=("acuracia", "std"),
+        f1_macro_media=("f1_macro", "mean"), f1_macro_dp=("f1_macro", "std"),
+        acuracia_categoria_media=("acuracia_categoria", "mean")).round(3).reset_index()
+    resumo.to_csv(os.path.join(a.saida, "resumo.csv"), index=False, encoding="utf-8")
+    classes = pd.concat(por_classe).groupby(["conjunto", "modelo", "classe"], sort=False).agg(
+        amostras=("amostras", "first"), f1_medio=("f1", "mean"), revocacao_media=("revocacao", "mean")
+    ).round(3).reset_index()
+    classes.to_csv(os.path.join(a.saida, "por_classe.csv"), index=False, encoding="utf-8")
+
+    figura = None
+    if a.exemplos in previsoes:
+        figura = os.path.join(a.saida, f"exemplos_{a.exemplos}.png")
+        _figura_exemplos(previsoes[a.exemplos], list(modelos), figura)
+    texto = ["# Avaliação do classificador de categoria", "",
+             f"- Modelos: {', '.join(f'{k} ({len(v)} sementes)' for k, v in modelos.items())}",
+             f"- Conjuntos: {', '.join(f'{k} = {v}' for k, v in conjuntos.items())}", "",
+             "## Resumo (média e desvio-padrão entre sementes)", "", tabela_md(resumo), "",
+             "## Por classe", "", tabela_md(classes), ""]
+    if figura:
+        texto += ["## Acertos e erros", "", f"![exemplos]({os.path.basename(figura)})", ""]
+    with open(os.path.join(a.saida, "avaliacao.md"), "w", encoding="utf-8") as f:
+        f.write("\n".join(texto))
+    print(tabela_md(resumo))
+    print(f"Detalhes em: {os.path.abspath(a.saida)}")
+
+
 def main():
-    p = argparse.ArgumentParser(description="Avaliação da contagem e do detector")
+    p = argparse.ArgumentParser(description="Avaliação da contagem, do detector e do classificador")
     sub = p.add_subparsers(dest="comando", required=True)
 
     c = sub.add_parser("contagem", help="compara eventos.csv do sistema com a contagem manual da equipe")
@@ -151,6 +260,15 @@ def main():
     d.add_argument("--conf-min", type=float, default=0.05)
     d.add_argument("--saida", default="avaliacao_detector")
     d.set_defaults(func=cmd_detector)
+
+    k = sub.add_parser("classificador", help="compara classificadores de categoria em pastas de recortes (opção A)")
+    k.add_argument("--modelos", nargs="+", required=True, help="nome=pesos1.pt,pesos2.pt (uma lista por modelo)")
+    k.add_argument("--conjuntos", nargs="+", required=True, help="nome=pasta com uma subpasta por classe")
+    k.add_argument("--exemplos", default="proprias", help="conjunto usado na figura de acertos e erros")
+    k.add_argument("--config", default="config.yaml")
+    k.add_argument("--imgsz", type=int, default=128)
+    k.add_argument("--saida", default="avaliacao_opcao_a")
+    k.set_defaults(func=cmd_classificador)
 
     a = p.parse_args()
     a.func(a)

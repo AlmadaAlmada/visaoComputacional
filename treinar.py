@@ -143,13 +143,24 @@ def preparar_cls(a):
     print(f"Dataset de classificação pronto: {os.path.abspath(a.saida)} ({extraidos} imagens)")
 
 
+def preparar_proprias(a):
+    from contagem.proprias import preparar
+
+    anotacoes = preparar(a.anotacoes, a.fotos, a.saida, a.base, a.conjunto, a.teste, a.repeticoes, a.semente)
+    for divisao in ("treino", "teste"):
+        parte = anotacoes[anotacoes["divisao"] == divisao]
+        print(f"{divisao}: {len(parte)} recortes de {parte['foto'].nunique()} fotos | "
+              + ", ".join(f"{c}: {n}" for c, n in parte["classe"].value_counts().items()))
+    print(f"Conjunto MIO-TCD + imagens próprias (treino x{a.repeticoes}): {os.path.abspath(a.conjunto)}")
+
+
 def treinar_cls(a):
     from ultralytics import YOLO
 
     modelo = YOLO(a.base)
     modelo.train(data=a.dados, epochs=a.epocas, imgsz=a.imgsz, batch=a.lote, device=a.dispositivo,
                  project=os.path.abspath(a.projeto), name=a.nome, patience=a.paciencia, workers=a.workers,
-                 plots=True, exist_ok=True)
+                 seed=a.semente, plots=True, exist_ok=True)
     melhor = os.path.join(str(modelo.trainer.save_dir), "weights", "best.pt")
     metricas = YOLO(melhor).val(data=a.dados, imgsz=a.imgsz, batch=a.lote, device=a.dispositivo, plots=True)
     print(f"Acurácia top-1: {metricas.top1:.4f} | top-5: {metricas.top5:.4f}")
@@ -218,7 +229,19 @@ def main():
     tc.add_argument("--workers", type=int, default=4)
     tc.add_argument("--projeto", default="treinos")
     tc.add_argument("--nome", default="mio_tcd_cls")
+    tc.add_argument("--semente", type=int, default=0)
     tc.set_defaults(func=treinar_cls)
+
+    pp = sub.add_parser("preparar-proprias", help="recorta as fotos próprias anotadas e junta ao MIO-TCD (opção A)")
+    pp.add_argument("--anotacoes", default="fotos_nossas/anotacoes.csv")
+    pp.add_argument("--fotos", default="fotos_nossas")
+    pp.add_argument("--saida", default="dados/proprias")
+    pp.add_argument("--base", default="dados/mio_tcd_cls")
+    pp.add_argument("--conjunto", default="dados/mio_tcd_cls_com_proprias")
+    pp.add_argument("--teste", type=float, default=0.4, help="fração dos veículos (por grupo) guardada para teste")
+    pp.add_argument("--repeticoes", type=int, default=20, help="vezes que cada recorte próprio entra no treino")
+    pp.add_argument("--semente", type=int, default=42)
+    pp.set_defaults(func=preparar_proprias)
 
     a = p.parse_args()
     a.func(a)

@@ -137,6 +137,26 @@ def avaliar_contagem(sis, ref, coluna=None, tolerancia=2.0, simultaneo=None):
     return resultado
 
 
+def avaliar_classificacao(verdadeiro, previsto):
+    verdadeiro = pd.Series(list(verdadeiro), name="referencia")
+    previsto = pd.Series(list(previsto), name="sistema")
+    linhas = []
+    for c in sorted(verdadeiro.unique()):
+        tp = int(((verdadeiro == c) & (previsto == c)).sum())
+        n_prev = int((previsto == c).sum())
+        n_ref = int((verdadeiro == c).sum())
+        precisao = tp / n_prev if n_prev else 0.0
+        revocacao = tp / n_ref
+        f1 = 2 * precisao * revocacao / (precisao + revocacao) if precisao + revocacao else 0.0
+        linhas.append({"classe": c, "amostras": n_ref, "precisao": round(precisao, 3),
+                       "revocacao": round(revocacao, 3), "f1": round(f1, 3)})
+    por_classe = pd.DataFrame(linhas)
+    return {"acuracia": round(float((verdadeiro == previsto).mean()), 4),
+            "f1_macro": round(float(por_classe["f1"].mean()), 4),
+            "por_classe": por_classe,
+            "confusao": pd.crosstab(verdadeiro, previsto)}
+
+
 def _ap_voc(revocacao, precisao):
     r = np.concatenate(([0.0], revocacao, [1.0]))
     p = np.concatenate(([0.0], precisao, [0.0]))

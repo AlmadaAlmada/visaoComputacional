@@ -7,9 +7,10 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from contagem.alertas import MonitorFluxo
-from contagem.avaliacao import avaliar_contagem, avaliar_deteccoes
+from contagem.avaliacao import avaliar_classificacao, avaliar_contagem, avaliar_deteccoes
 from contagem.contador import Contador, Deteccao, LinhaContagem
 from contagem.latencia import MedidorLatencia
+from contagem.proprias import dividir_por_grupo
 
 FPS = 10.0
 
@@ -143,6 +144,13 @@ class TestAvaliacao(unittest.TestCase):
         r = avaliar_contagem(sis, ref)
         self.assertEqual(r["totais"].iloc[-1]["erro_pct"], -20.0)
 
+    def test_classificacao(self):
+        r = avaliar_classificacao(["carro", "carro", "moto", "van"], ["carro", "van", "moto", "van"])
+        self.assertEqual(r["acuracia"], 0.75)
+        van = r["por_classe"].set_index("classe").loc["van"]
+        self.assertEqual((van["precisao"], van["revocacao"]), (0.5, 1.0))
+        self.assertAlmostEqual(r["f1_macro"], (0.667 + 1.0 + 0.667) / 3, places=2)
+
     def test_ap_detector(self):
         gts = [(0, "carro", (0, 0, 10, 10)), (0, "moto", (20, 20, 30, 30))]
         preds = [(0, "carro", 0.9, (0, 0, 10, 10)), (0, "carro", 0.8, (50, 50, 60, 60))]
@@ -150,6 +158,17 @@ class TestAvaliacao(unittest.TestCase):
         carro = tabela[tabela["categoria"] == "carro"].iloc[0]
         self.assertEqual((carro["tp"], carro["ap50"]), (1, 1.0))
         self.assertEqual(map50, 0.5)
+
+
+class TestProprias(unittest.TestCase):
+    def test_mesmo_veiculo_fica_do_mesmo_lado(self):
+        anotacoes = pd.DataFrame({"classe": ["car"] * 6 + ["motorcycle"] * 2,
+                                  "grupo": ["a", "a", "b", "c", "d", "e", "f", "g"]})
+        r = dividir_por_grupo(anotacoes, fracao_teste=0.4, semente=1)
+        for _, parte in r.groupby("grupo"):
+            self.assertEqual(parte["divisao"].nunique(), 1)
+        self.assertEqual(set(r["divisao"]), {"treino", "teste"})
+        self.assertEqual(r[r["classe"] == "motorcycle"]["divisao"].tolist().count("teste"), 1)
 
 
 class TestLatencia(unittest.TestCase):
